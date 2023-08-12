@@ -1,5 +1,7 @@
 ## HolePunch Plugin
 
+*Fork designed for P2P sessions in which both clients require eachother's ip and port as well as a unique id.  Currently only works for two players*
+
 The HolePunch plugin can be used in combination with the Server to manage port-forwarding in your game through a method known as hole punching. To get started with the plugin start by importing the addons folder into your Godot game folder and enabling the plugin. Afterwards you can add the HolePunch node to the scene where you utilize matchmaking to begin setting up hole punching for your game.
 
 ### Documentation
