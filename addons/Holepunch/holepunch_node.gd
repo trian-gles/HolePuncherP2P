@@ -2,7 +2,7 @@ extends Node
 
 #Signal is emitted when holepunch is complete. Connect this signal to your network manager
 #Once your network manager received the signal they can initiate contact on that address and port
-signal hole_punched(my_port, other_port, other_address)
+signal hole_punched(my_port, other_port, other_address, unique_id)
 
 #This signal is emitted when the server has acknowledged your client registration, but before the
 #address and port of the other client have arrived.
@@ -92,6 +92,7 @@ func _process(delta):
 				if packet_string.length() > 2:
 					var m = packet_string.split(":")
 					peer[m[0]] = {"port":m[2], "address":m[1]}
+					player_id = m[3]
 					recieved_peer_info = true
 					start_peer_contact()
 
@@ -167,7 +168,7 @@ func _ping_peer():
 		gos_sent += 1
 
 		if gos_sent >= response_window: #the other player has confirmed and is probably waiting
-			emit_signal("hole_punched", int(own_port), int(other_port), other_address)
+			emit_signal("hole_punched", int(own_port), int(other_port), other_address, int(player_id))
 			p_timer.stop()
 			set_process(false)
 
