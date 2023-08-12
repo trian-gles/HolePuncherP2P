@@ -1,8 +1,8 @@
 extends Node
 
 #Signal is emitted when holepunch is complete. Connect this signal to your network manager
-#Once your network manager received the signal they can host or join a game on the host port
-signal hole_punched(my_port, hosts_port, hosts_address)
+#Once your network manager received the signal they can initiate contact on that address and port
+signal hole_punched(my_port, other_port, other_address)
 
 #This signal is emitted when the server has acknowledged your client registration, but before the
 #address and port of the other client have arrived.
@@ -31,11 +31,12 @@ var is_host = false
 
 var own_port
 var peer = {}
-var host_address = ""
-var host_port = 0
+var other_address = ""
+var other_port = 0
 var client_name
 var p_timer
 var session_id
+var player_id
 
 var ports_tried = 0
 var greets_sent = 0
@@ -51,7 +52,7 @@ const PEER_GO = "go"
 const SERVER_OK = "ok"
 const SERVER_INFO = "peers"
 
-const MAX_PLAYER_COUNT = 2
+const MAX_PLAYER_COUNT = 2 # currently only works for two players.
 
 # warning-ignore:unused_argument
 func _process(delta):
@@ -80,9 +81,8 @@ func _process(delta):
 			var m = packet_string.split(":")
 			own_port = int( m[1] )
 			emit_signal('session_registered')
-			if is_host:
-				if !found_server:
-					_send_client_to_server()
+			if !found_server:
+				_send_client_to_server()
 			found_server=true
 
 		if not recieved_peer_info:
@@ -108,10 +108,9 @@ func _handle_confirm_message(peer_name, peer_port, my_port, is_host):
 	if peer[peer_name].port != peer_port:
 		peer[peer_name].port = peer_port
 
-	peer[peer_name].is_host = is_host
-	if is_host:
-		host_address = peer[peer_name].address
-		host_port = peer[peer_name].port
+
+	other_address = peer[peer_name].address
+	other_port = peer[peer_name].port
 	peer_udp.close()
 	peer_udp.listen(own_port, "*")
 	recieved_peer_confirm = true
@@ -119,7 +118,7 @@ func _handle_confirm_message(peer_name, peer_port, my_port, is_host):
 
 func _handle_go_message(peer_name):
 	recieved_peer_go = true
-	emit_signal("hole_punched", int(own_port), int(host_port), host_address)
+	emit_signal("hole_punched", int(own_port), int(other_port), other_address)
 	peer_udp.close()
 	p_timer.stop()
 	set_process(false)
@@ -168,7 +167,7 @@ func _ping_peer():
 		gos_sent += 1
 
 		if gos_sent >= response_window: #the other player has confirmed and is probably waiting
-			emit_signal("hole_punched", int(own_port), int(host_port), host_address)
+			emit_signal("hole_punched", int(own_port), int(other_port), other_address)
 			p_timer.stop()
 			set_process(false)
 
@@ -201,7 +200,7 @@ func checkout():
 
 
 #Call this function when you want to start the holepunch process
-func start_traversal(id, is_player_host, player_name):
+func start_traversal(id, player_name):
 	if server_udp.is_listening():
 		server_udp.close()
 
@@ -209,7 +208,6 @@ func start_traversal(id, is_player_host, player_name):
 	if err != OK:
 		print("Error listening on port: " + str(rendevouz_port) + " to server: " + rendevouz_address)
 
-	is_host = is_player_host
 	client_name = player_name
 	found_server = false
 	recieved_peer_info = false
@@ -222,16 +220,20 @@ func start_traversal(id, is_player_host, player_name):
 	greets_sent = 0
 	gos_sent = 0
 	session_id = id
-	
-	if (is_host):
-		var buffer = PoolByteArray()
-		buffer.append_array((REGISTER_SESSION+session_id+":"+str(MAX_PLAYER_COUNT)).to_utf8())
-		server_udp.close()
-		server_udp.set_dest_address(rendevouz_address, rendevouz_port)
-		server_udp.put_packet(buffer)
-	else:
-		_send_client_to_server()
 
+	server_udp.set_dest_address(rendevouz_address, rendevouz_port)
+	
+	_try_create_session()
+	
+
+	
+#Create a session if it hasn't been made yet
+func _try_create_session():
+	var buffer = PoolByteArray()
+	buffer.append_array((REGISTER_SESSION+session_id+":"+str(MAX_PLAYER_COUNT)).to_utf8())
+	server_udp.close()
+	server_udp.set_dest_address(rendevouz_address, rendevouz_port)
+	server_udp.put_packet(buffer)
 
 #Register a client with the server
 func _send_client_to_server():
