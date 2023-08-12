@@ -27,8 +27,6 @@ var recieved_peer_greet = false
 var recieved_peer_confirm = false
 var recieved_peer_go = false
 
-var is_host = false
-
 var own_port
 var peer = {}
 var other_address = ""
@@ -67,7 +65,7 @@ func _process(delta):
 		if not recieved_peer_confirm:
 			if packet_string.begins_with(PEER_CONFIRM):
 				var m = packet_string.split(":")
-				_handle_confirm_message(m[2], m[1], m[4], m[3])
+				_handle_confirm_message(m[2], m[1], m[3])
 
 		elif not recieved_peer_go:
 			if packet_string.begins_with(PEER_GO):
@@ -105,7 +103,7 @@ func _handle_greet_message(peer_name, peer_port, my_port):
 	recieved_peer_greet = true
 
 
-func _handle_confirm_message(peer_name, peer_port, my_port, is_host):
+func _handle_confirm_message(peer_name, peer_port, my_port):
 	if peer[peer_name].port != peer_port:
 		peer[peer_name].port = peer_port
 
@@ -156,7 +154,7 @@ func _ping_peer():
 		for p in peer.keys():
 			peer_udp.set_dest_address(peer[p].address, int(peer[p].port))
 			var buffer = PoolByteArray()
-			buffer.append_array(("confirm:"+str(own_port)+":"+client_name+":"+str(is_host)+":"+peer[p].port).to_utf8())
+			buffer.append_array(("confirm:"+str(own_port)+":"+client_name+":"+peer[p].port).to_utf8())
 			peer_udp.put_packet(buffer)
 
 	if  recieved_peer_confirm:
