@@ -4,7 +4,7 @@ from twisted.internet import reactor
 from time import sleep
 
 import sys
-
+import random
 
 
 def address_to_string(address):
@@ -27,7 +27,7 @@ class ServerProtocol(DatagramProtocol):
 			return
 
 		self.active_sessions[s_id] = Session(s_id, client_list, self)
-
+		print(f"Created session {s_id}")
 
 	def remove_session(self, s_id):
 		try:
@@ -115,14 +115,16 @@ class Session:
 			self.exchange_peer_info()
 
 	def exchange_peer_info(self):
+		id = random.getrandbits(1)
 		for addressed_client in self.registered_clients:
 			address_list = []
 			for client in self.registered_clients:
 				if not client.name == addressed_client.name:
 					address_list.append(client.name + ":" + address_to_string((client.ip, client.port)))
 			address_string = ",".join(address_list)
-			message = bytes( "peers:" + address_string, "utf-8")
+			message = bytes( "peers:" + address_string + f":{id}", "utf-8")
 			self.server.transport.write(message, (addressed_client.ip, addressed_client.port))
+			id = int(not id)
 
 		print("Peer info has been sent. Terminating Session")
 		for client in self.registered_clients:
